@@ -5,11 +5,14 @@ import dbt.flags
 import dbt.contracts.project
 import dbt.utils
 
+from dbt.contracts.graph.unparsed import UnparsedRunHook
 from dbt.parser.base_sql import BaseSqlParser
 from dbt.node_types import NodeType, RunHookType
 
 
 class HookParser(BaseSqlParser):
+    UnparsedNodeType = UnparsedRunHook
+
     @classmethod
     def get_hooks_from_project(cls, config, hook_type):
         if hook_type == RunHookType.Start:
@@ -60,9 +63,6 @@ class HookParser(BaseSqlParser):
         return results.parsed
 
     def load_and_parse(self):
-        if dbt.flags.STRICT_MODE:
-            dbt.contracts.project.ProjectList(**self.all_projects)
-
         hook_nodes = {}
         for hook_type in RunHookType:
             project_hooks = self.load_and_parse_run_hook_type(

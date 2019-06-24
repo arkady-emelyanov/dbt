@@ -235,7 +235,7 @@ class TestSourceFreshness(BaseSourcesTest):
         )
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, 'error')
-        self.assertTrue(results[0].failed)
+        self.assertTrue(results[0].fail)
         self.assertIsNone(results[0].error)
         self._assert_freshness_results('target/error_source.json', 'error')
 
@@ -246,7 +246,7 @@ class TestSourceFreshness(BaseSourcesTest):
         )
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, 'warn')
-        self.assertFalse(results[0].failed)
+        self.assertFalse(results[0].fail)
         self.assertIsNone(results[0].error)
         self._assert_freshness_results('target/warn_source.json', 'warn')
 
@@ -257,7 +257,7 @@ class TestSourceFreshness(BaseSourcesTest):
         )
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, 'pass')
-        self.assertFalse(results[0].failed)
+        self.assertFalse(results[0].fail)
         self.assertIsNone(results[0].error)
         self._assert_freshness_results('target/pass_source.json', 'pass')
 
@@ -291,7 +291,7 @@ class TestSourceFreshnessErrors(BaseSourcesTest):
         )
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, 'error')
-        self.assertFalse(results[0].failed)
+        self.assertFalse(results[0].fail)
         self.assertIsNotNone(results[0].error)
 
 

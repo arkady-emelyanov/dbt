@@ -28,7 +28,6 @@ class MacroParser(BaseParser):
         if tags is None:
             tags = []
 
-        # change these to actual kwargs
         base_node = UnparsedMacro(
             path=macro_file_path,
             original_file_path=macro_file_path,
@@ -57,7 +56,7 @@ class MacroParser(BaseParser):
             unique_id = self.get_path(resource_type, package_name, name)
 
             merged = dbt.utils.deep_merge(
-                base_node.serialize(),
+                base_node.to_dict(),
                 {
                     'name': name,
                     'unique_id': unique_id,
@@ -66,7 +65,7 @@ class MacroParser(BaseParser):
                     'depends_on': {'macros': []},
                 })
 
-            new_node = ParsedMacro(**merged)
+            new_node = ParsedMacro.from_dict(merged)
 
             to_return[unique_id] = new_node
 
@@ -78,9 +77,6 @@ class MacroParser(BaseParser):
 
         if tags is None:
             tags = []
-
-        if dbt.flags.STRICT_MODE:
-            dbt.contracts.project.ProjectList(**self.all_projects)
 
         file_matches = dbt.clients.system.find_matching(
             root_dir,

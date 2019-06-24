@@ -77,19 +77,18 @@ class BaseRunner:
         return result
 
     def _build_run_result(self, node, start_time, error, status, timing_info,
-                          skip=False, failed=None, agate_table=None):
+                          skip=False, fail=None, agate_table=None):
         execution_time = time.time() - start_time
         thread_id = threading.current_thread().name
-        timing = [t.serialize() for t in timing_info]
         return RunModelResult(
             node=node,
             error=error,
             skip=skip,
             status=status,
-            failed=failed,
+            fail=fail,
             execution_time=execution_time,
             thread_id=thread_id,
-            timing=timing,
+            timing=timing_info,
             agate_table=agate_table,
         )
 
@@ -118,14 +117,14 @@ class BaseRunner:
             error=result.error,
             skip=result.skip,
             status=result.status,
-            failed=result.failed,
+            fail=result.fail,
             timing_info=timing_info,
             agate_table=result.agate_table,
         )
 
     def compile_and_execute(self, manifest, ctx):
         result = None
-        self.adapter.acquire_connection(self.node.get('name'))
+        self.adapter.acquire_connection(self.node.name)
         with collect_timing_info('compile') as timing_info:
             # if we fail here, we still have a compiled node to return
             # this has the benefit of showing a build path for the errant
@@ -147,6 +146,7 @@ class BaseRunner:
         if e.node is None:
             e.node = ctx.node
 
+        logger.debug(str(e), exc_info=True)
         return str(e)
 
     def _handle_internal_exception(self, e, ctx):
@@ -158,11 +158,11 @@ class BaseRunner:
             error=str(e).strip(),
             note=INTERNAL_ERROR_STRING
         )
-        logger.debug(error)
+        logger.debug(error, exc_info=True)
         return str(e)
 
     def _handle_generic_exception(self, e, ctx):
-        node_description = self.node.get('build_path')
+        node_description = self.node.build_path
         if node_description is None:
             node_description = self.node.unique_id
         prefix = "Unhandled error while executing {}".format(node_description)
@@ -398,7 +398,6 @@ class FreshnessRunner(BaseRunner):
                           skip=False, failed=None):
         execution_time = time.time() - start_time
         thread_id = threading.current_thread().name
-        timing = [t.serialize() for t in timing_info]
         if status is not None:
             status = status.lower()
         return PartialResult(
@@ -407,12 +406,12 @@ class FreshnessRunner(BaseRunner):
             error=error,
             execution_time=execution_time,
             thread_id=thread_id,
-            timing=timing
+            timing=timing_info,
         )
 
     def from_run_result(self, result, start_time, timing_info):
         result.execution_time = (time.time() - start_time)
-        result.timing.extend(t.serialize() for t in timing_info)
+        result.timing.extend(timing_info)
         return result
 
     def execute(self, compiled_node, manifest):
@@ -474,7 +473,7 @@ class TestRunner(CompileRunner):
             num_cols = len(table.columns)
             raise RuntimeError(
                 "Bad test {name}: Returned {rows} rows and {cols} cols"
-                .format(name=test.get('name'), rows=num_rows, cols=num_cols))
+                .format(name=test.name, rows=num_rows, cols=num_cols))
 
         return table[0][0]
 
@@ -564,24 +563,22 @@ class RPCCompileRunner(CompileRunner):
         )
 
     def from_run_result(self, result, start_time, timing_info):
-        timing = [t.serialize() for t in timing_info]
         return RemoteCompileResult(
             raw_sql=result.raw_sql,
             compiled_sql=result.compiled_sql,
             node=result.node,
-            timing=timing
+            timing=timing_info,
         )
 
 
 class RPCExecuteRunner(RPCCompileRunner):
     def from_run_result(self, result, start_time, timing_info):
-        timing = [t.serialize() for t in timing_info]
         return RemoteRunResult(
             raw_sql=result.raw_sql,
             compiled_sql=result.compiled_sql,
             node=result.node,
             table=result.table,
-            timing=timing
+            timing=timing_info,
         )
 
     def execute(self, compiled_node, manifest):

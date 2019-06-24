@@ -11,6 +11,8 @@ from dbt.adapters.factory import get_relation_class_by_name
 from .profile import Profile
 from .project import Project
 
+from hologram import ValidationError
+
 
 class RuntimeConfig(Project, Profile):
     """The runtime configuration, as constructed from its components. There's a
@@ -154,8 +156,8 @@ class RuntimeConfig(Project, Profile):
         :raises DbtProjectError: If the configuration fails validation.
         """
         try:
-            Configuration(**self.serialize())
-        except ValidationException as e:
+            Configuration.from_dict(self.serialize())
+        except (ValidationException, ValidationError) as e:
             raise DbtProjectError(str(e))
 
         if getattr(self.args, 'version_check', False):

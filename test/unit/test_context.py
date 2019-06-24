@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 
-from dbt.contracts.graph.parsed import ParsedNode
+from dbt.contracts.graph.parsed import ParsedNode, NodeConfig, DependsOn
 from dbt.context import parser, runtime
 import dbt.exceptions
 from .mock_adapter import adapter_factory
@@ -23,11 +23,8 @@ class TestVar(unittest.TestCase):
             root_path='/usr/src/app',
             refs=[],
             sources=[],
-            depends_on={
-                'nodes': [],
-                'macros': []
-            },
-            config={
+            depends_on=DependsOn(),
+            config=NodeConfig.from_dict({
                 'enabled': True,
                 'materialized': 'view',
                 'persist_docs': {},
@@ -37,7 +34,7 @@ class TestVar(unittest.TestCase):
                 'quoting': {},
                 'column_types': {},
                 'tags': [],
-            },
+            }),
             tags=[],
             path='model_one.sql',
             raw_sql='',

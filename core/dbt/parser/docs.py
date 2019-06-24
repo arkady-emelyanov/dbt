@@ -77,14 +77,14 @@ class DocumentationParser(BaseParser):
             unique_id = '{}.{}'.format(docfile.package_name, name)
 
             merged = dbt.utils.deep_merge(
-                docfile.serialize(),
+                docfile.to_dict(),
                 {
                     'name': name,
                     'unique_id': unique_id,
                     'block_contents': item().strip(),
                 }
             )
-            yield ParsedDocumentation(**merged)
+            yield ParsedDocumentation.from_dict(merged)
 
     def load_and_parse(self, package_name, root_dir, relative_dirs):
         to_return = {}

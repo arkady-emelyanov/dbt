@@ -68,15 +68,15 @@ class TemplateCache:
         self.file_cache = {}
 
     def get_node_template(self, node):
-        key = (node['package_name'], node['original_file_path'])
+        key = (node.package_name, node.original_file_path)
 
         if key in self.file_cache:
             return self.file_cache[key]
 
         template = get_template(
-            string=node.get('raw_sql'),
+            string=node.raw_sql,
             ctx={},
-            node=node
+            node=node.to_dict(),
         )
         self.file_cache[key] = template
 
@@ -92,7 +92,7 @@ template_cache = TemplateCache()
 def macro_generator(node):
     def apply_context(context):
         def call(*args, **kwargs):
-            name = node.get('name')
+            name = node.name
             template = template_cache.get_node_template(node)
             module = template.make_module(context, False, context)
 
@@ -170,6 +170,7 @@ def _is_dunder_name(name):
 
 def create_macro_capture_env(node):
 
+    # TODO: remove the to_dict() call and change this to use objects
     class ParserMacroCapture(jinja2.Undefined):
         """
         This class sets up the parser to capture macros.

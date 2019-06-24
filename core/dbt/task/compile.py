@@ -160,4 +160,4 @@ class RemoteCompileTask(CompileTask, RemoteCallable):
             raise dbt.exceptions.RPCKilledException(signal.SIGINT)
 
         self._raise_set_error()
-        return self.node_results[0].serialize()
+        return self.node_results[0].to_dict()

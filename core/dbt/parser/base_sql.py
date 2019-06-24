@@ -13,6 +13,8 @@ from dbt.node_types import NodeType
 
 
 class BaseSqlParser(MacrosKnownParser):
+    UnparsedNodeType = UnparsedNode
+
     @classmethod
     def get_compiled_path(cls, name, relative_path):
         raise dbt.exceptions.NotImplementedException("Not implemented")
@@ -26,9 +28,6 @@ class BaseSqlParser(MacrosKnownParser):
 
         if tags is None:
             tags = []
-
-        if dbt.flags.STRICT_MODE:
-            dbt.contracts.project.ProjectList(**self.all_projects)
 
         file_matches = dbt.clients.system.find_matching(
             root_dir,
@@ -67,7 +66,7 @@ class BaseSqlParser(MacrosKnownParser):
         if tags is None:
             tags = []
 
-        node = UnparsedNode(**node_dict)
+        node = self.UnparsedNodeType.from_dict(node_dict)
         package_name = node.package_name
 
         unique_id = self.get_path(node.resource_type,
@@ -83,6 +82,7 @@ class BaseSqlParser(MacrosKnownParser):
             )
 
         node_parsed = self.parse_node(node, unique_id, project, tags=tags)
+
         if not parse_ok:
             # if we had a parse error in parse_node, we would not get here. So
             # this means we rejected a good file :(
@@ -102,7 +102,7 @@ class BaseSqlParser(MacrosKnownParser):
             node_path, node_parsed = self.parse_sql_node(n, tags)
 
             # Ignore disabled nodes
-            if not node_parsed.config['enabled']:
+            if not node_parsed.config.enabled:
                 results.disable(node_parsed)
                 continue
 

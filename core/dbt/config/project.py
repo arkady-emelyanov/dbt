@@ -23,6 +23,8 @@ from dbt.parser.source_config import SourceConfig
 from dbt.contracts.project import Project as ProjectContract
 from dbt.contracts.project import PackageConfig
 
+from hologram import ValidationError
+
 from .renderer import ConfigRenderer
 
 
@@ -118,8 +120,8 @@ def package_config_from_data(packages_data):
         packages_data = {'packages': []}
 
     try:
-        packages = PackageConfig(**packages_data)
-    except ValidationException as e:
+        packages = PackageConfig.from_dict(packages_data)
+    except (ValidationException, ValidationError) as e:
         raise DbtProjectError('Invalid package config: {}'.format(str(e)))
     return packages
 
@@ -215,8 +217,8 @@ class Project:
             )
         # just for validation.
         try:
-            ProjectContract(**project_dict)
-        except ValidationException as e:
+            ProjectContract.from_dict(project_dict)
+        except (ValidationException, ValidationError) as e:
             raise DbtProjectError(str(e))
 
         # name/version are required in the Project definition, so we can assume
@@ -256,7 +258,10 @@ class Project:
         except SemverException as e:
             raise DbtProjectError(str(e))
 
-        packages = package_config_from_data(packages_dict)
+        try:
+            packages = package_config_from_data(packages_dict)
+        except (ValidationException, ValidationError) as e:
+            raise DbtProjectError(str(e))
 
         project = cls(
             project_name=name,
@@ -330,13 +335,13 @@ class Project:
             ],
         })
         if with_packages:
-            result.update(self.packages.serialize())
+            result.update(self.packages.to_dict())
         return result
 
     def validate(self):
         try:
-            ProjectContract(**self.to_project_config())
-        except ValidationException as exc:
+            ProjectContract.from_dict(self.to_project_config())
+        except (ValidationException, ValidationError) as exc:
             raise DbtProjectError(str(exc))
 
     @classmethod

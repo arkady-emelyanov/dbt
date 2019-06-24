@@ -6,25 +6,14 @@ import dbt.clients.jinja
 import dbt.exceptions
 import dbt.utils
 
+from hologram import ValidationError
+
 
 def set_snapshot_attributes(node):
-    # Default the target database to the database specified in the target
-    # This line allows target_database to be optional in the snapshot config
-    if 'target_database' not in node.config:
-        node.config['target_database'] = node.database
-
-    # Set the standard node configs (database+schema) to be the specified
-    # values from target_database and target_schema. This ensures that the
-    # database and schema names are interopolated correctly when snapshots
-    # are ref'd from other models
-    config_keys = {
-        'target_database': 'database',
-        'target_schema': 'schema'
-    }
-
-    for config_key, node_key in config_keys.items():
-        if config_key in node.config:
-            setattr(node, node_key, node.config[config_key])
+    if node.config.target_database:
+        node.database = node.config.target_database
+    if node.config.target_schema:
+        node.schema = node.config.target_schema
 
     return node
 
@@ -70,10 +59,10 @@ class SnapshotParser(BaseSqlParser):
     def validate_snapshots(node):
         if node.resource_type == NodeType.Snapshot:
             try:
-                parsed_node = ParsedSnapshotNode(**node.to_shallow_dict())
+                parsed_node = ParsedSnapshotNode.from_dict(node.to_dict())
                 return set_snapshot_attributes(parsed_node)
 
-            except dbt.exceptions.JSONValidationException as exc:
+            except ValidationError as exc:
                 raise dbt.exceptions.CompilationException(str(exc), node)
         else:
             return node
