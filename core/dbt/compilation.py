@@ -15,11 +15,19 @@ import dbt.exceptions
 import dbt.flags
 import dbt.loader
 import dbt.config
-from dbt.contracts.graph.compiled import InjectedCTE, CompiledNode
+from dbt.contracts.graph.compiled import InjectedCTE, CompiledNode, \
+    CompiledTestNode
 
 from dbt.logger import GLOBAL_LOGGER as logger
 
 graph_file_name = 'graph.gpickle'
+
+
+def _compiled_type_for(model):
+    if model.resource_type == NodeType.Test:
+        return CompiledTestNode
+    else:
+        return CompiledNode
 
 
 def print_compile_stats(stats):
@@ -68,7 +76,7 @@ def recursively_prepend_ctes(model, manifest):
 
     if dbt.flags.STRICT_MODE:
         # ensure that the cte we're adding to is compiled
-        CompiledNode.from_dict(model.to_dict())
+        _compiled_type_for(model).from_dict(model.to_dict())
 
     prepended_ctes = []
 
@@ -111,7 +119,7 @@ class Compiler:
             'extra_ctes': [],
             'injected_sql': None,
         })
-        compiled_node = CompiledNode.from_dict(data)
+        compiled_node = _compiled_type_for(node).from_dict(data)
 
         context = dbt.context.runtime.generate(
             compiled_node, self.config, manifest)

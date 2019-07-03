@@ -43,8 +43,7 @@ class NodeConfig(JsonSchemaMixin, Replaceable):
     vars: Dict[str, Any] = field(default_factory=dict)
     quoting: Dict[str, Any] = field(default_factory=dict)
     column_types: Dict[str, Any] = field(default_factory=dict)
-    tags: Union[str, List[str]] = field(default_factory=list)
-    severity: Severity = 'error'
+    tags: Union[List[str], str] = field(default_factory=list)
     _extra: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -167,15 +166,15 @@ class ParsedNodeMixins:
         self.description = patch.description
         self.columns = patch.columns
         self.docrefs = patch.docrefs
-        # TODO: patches should always trigger re-validation
-        # self.validate()
+        # patches should always trigger re-validation
+        self.to_dict(validate=True)
 
     def get_materialization(self):
         return self.config.materialized
 
 
-# TODO(jeb): tests should get their own parsed type instead of including
-# column_name everywhere!
+# TODO(jeb): hooks should get their own parsed type instead of including
+# index everywhere!
 @dataclass
 class ParsedNode(
         UnparsedNode,
@@ -193,8 +192,36 @@ class ParsedNode(
     columns: Dict[str, ColumnInfo] = field(default_factory=dict)
     patch_path: Optional[str] = None
     build_path: Optional[str] = None
-    column_name: Optional[str] = None
     index: Optional[int] = None
+
+
+@dataclass
+class TestConfig(NodeConfig):
+    severity: Severity = 'error'
+
+
+TestType = StrLiteral(NodeType.Test)
+
+
+@dataclass
+class ParsedTestNode(
+        UnparsedNode,
+        HasUniqueID,
+        HasFqn,
+        CanRef,
+        HasRelationMetadata,
+        ParsedNodeMixins):
+    resource_type: TestType
+    alias: str
+    empty: bool
+    tags: List[str]
+    config: TestConfig
+    docrefs: List[Docref] = field(default_factory=list)
+    description: str = field(default='')
+    columns: Dict[str, ColumnInfo] = field(default_factory=dict)
+    patch_path: Optional[str] = None
+    build_path: Optional[str] = None
+    column_name: Optional[str] = None
 
 
 @dataclass(init=False)
@@ -236,6 +263,13 @@ class TimestampSnapshotConfig(_SnapshotConfig):
 @dataclass(init=False)
 class CheckSnapshotConfig(_SnapshotConfig):
     strategy: _CCEnum
+    # TODO: is there a way to get this to accept tuples of strings? Adding
+    # `Tuple[str, ...]` to the list of types results in this:
+    # ['email'] is valid under each of {'type': 'array', 'items':
+    # {'type': 'string'}}, {'type': 'array', 'items': {'type': 'string'}}
+    # but without it, parsing gets upset about values like `('email',)`
+    # maybe hologram itself should support this behavior? It's not like tuples
+    # are meaningful in json
     check_cols: Union[All, List[str]]
 
 <<<<<<< HEAD
@@ -323,6 +357,18 @@ PARSED_SNAPSHOT_NODE_CONTRACT = deep_merge(
         self.check_cols = check_cols
         super().__init__(**kwargs)
 >>>>>>> 2312cb3a... initial dataclasses work
+
+
+@dataclass
+class IntermediateSnapshotNode(ParsedNode):
+    # at an intermediate stage in parsing, where we've built something better
+    # than an unparsed node for rendering in parse mode, it's pretty possible
+    # that we won't have critical snapshot-related information that is only
+    # defined in config blocks. To fix that, we have an intermediate type that
+    # uses a regular node config, which the snapshot parser will then convert
+    # into a full ParsedSnapshotNode after rendering.
+    resource_type: StrLiteral(NodeType.Snapshot)
+    config: NodeConfig
 
 
 @dataclass

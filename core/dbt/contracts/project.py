@@ -3,7 +3,7 @@ from dbt.logger import GLOBAL_LOGGER as logger  # noqa
 from dbt import tracking
 from dbt.ui import printer
 
-from hologram import JsonSchemaMixin
+from hologram import JsonSchemaMixin, FieldEncoder
 from hologram.helpers import HyphenatedJsonSchemaMixin, NewPatternType, \
     ExtensibleJsonSchemaMixin
 
@@ -24,6 +24,15 @@ SemverString = NewPatternType(
     'SemverString',
     r'^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(\.(?:0|[1-9]\d*))?$',
 )
+
+
+class AnyEncoder(FieldEncoder):
+    @property
+    def json_schem(self):
+        return {'type': 'object', 'additionalProperties': True}
+
+
+JsonSchemaMixin.register_field_encoders({Any: AnyEncoder()})
 
 
 @dataclass
@@ -109,9 +118,7 @@ class Project(HyphenatedJsonSchemaMixin, Replaceable):
     quoting: Optional[Quoting]
     on_run_start: Optional[List[str]] = field(default_factory=list)
     on_run_end: Optional[List[str]] = field(default_factory=list)
-    require_dbt_version: Optional[Union[str, List[str]]] = field(
-        default_factory=list
-    )
+    require_dbt_version: Optional[Union[List[str], str]] = None
     models: Dict[str, Any] = field(default_factory=dict)
     seeds: Dict[str, Any] = field(default_factory=dict)
     packages: List[PackageSpec] = field(default_factory=list)

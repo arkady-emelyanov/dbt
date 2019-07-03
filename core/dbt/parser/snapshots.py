@@ -1,9 +1,10 @@
 
-from dbt.contracts.graph.parsed import ParsedSnapshotNode
+from dbt.contracts.graph.parsed import ParsedSnapshotNode, \
+    IntermediateSnapshotNode
+from dbt.exceptions import CompilationException
 from dbt.node_types import NodeType
 from dbt.parser.base_sql import BaseSqlParser, SQLParseResult
 import dbt.clients.jinja
-import dbt.exceptions
 import dbt.utils
 
 from hologram import ValidationError
@@ -28,7 +29,7 @@ class SnapshotParser(BaseSqlParser):
                 allowed_blocks={'snapshot'},
                 collect_raw_data=False
             )
-        except dbt.exceptions.CompilationException as exc:
+        except CompilationException as exc:
             if exc.node is None:
                 exc.node = file_node
             raise
@@ -55,6 +56,9 @@ class SnapshotParser(BaseSqlParser):
 
         return fqn
 
+    def _parse_from_dict(self, parsed_dict):
+        return IntermediateSnapshotNode.from_dict(parsed_dict)
+
     @staticmethod
     def validate_snapshots(node):
         if node.resource_type == NodeType.Snapshot:
@@ -63,7 +67,7 @@ class SnapshotParser(BaseSqlParser):
                 return set_snapshot_attributes(parsed_node)
 
             except ValidationError as exc:
-                raise dbt.exceptions.CompilationException(str(exc), node)
+                raise CompilationException(str(exc), node)
         else:
             return node
 
@@ -79,8 +83,8 @@ class SnapshotParser(BaseSqlParser):
                 self.parse_snapshots_from_file(file_node, tags=tags)
             )
             found = super().parse_sql_nodes(nodes=snapshot_nodes, tags=tags)
-            # make sure our blocks are going to work when we try to snapshot
-            # them!
+            # Our snapshots are all stored as IntermediateSnapshotNodes, so
+            # convert them to their final form
             found.parsed = {k: self.validate_snapshots(v) for
                             k, v in found.parsed.items()}
 

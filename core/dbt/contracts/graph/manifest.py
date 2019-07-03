@@ -249,7 +249,7 @@ class Manifest:
             return self._model_matches_schema_and_table(schema, table, model)
 
         matching = list(self._filter_subgraph(self.nodes, predicate))
-        return [match.get('unique_id') for match in matching]
+        return [match.unique_id for match in matching]
 
     def add_nodes(self, new_nodes):
         """Add the given dict of new nodes to the manifest."""

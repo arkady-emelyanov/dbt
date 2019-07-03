@@ -256,6 +256,9 @@ class MacrosKnownParser(BaseParser):
         self._mangle_hooks(config_dict)
         parsed_node.config = parsed_node.config.from_dict(config_dict)
 
+    def _parse_from_dict(self, parsed_dict):
+        return ParsedNode.from_dict(parsed_dict)
+
     def parse_node(self, node, node_path, package_project_config, tags=None,
                    fqn_extra=None, fqn=None, snapshot_config=None,
                    column_name=None):
@@ -283,7 +286,7 @@ class MacrosKnownParser(BaseParser):
             config, node.to_dict(), node_path, config, tags, fqn,
             snapshot_config, column_name
         )
-        parsed_node = ParsedNode.from_dict(parsed_dict)
+        parsed_node = self._parse_from_dict(parsed_dict)
 
         self._render_with_context(parsed_node, config)
         self._update_parsed_node_info(parsed_node, config)

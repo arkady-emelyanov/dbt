@@ -1,6 +1,7 @@
 from dbt.contracts.graph.parsed import (
     ParsedMacro, ParsedNodeMixins, ParsedNode, ParsedSourceDefinition, Docref,
     ColumnInfo, HasUniqueID, HasFqn, CanRef, HasRelationMetadata, NodeConfig,
+    TestConfig, TestType, ParsedTestNode
 )
 from dbt.contracts.graph.unparsed import UnparsedNode
 
@@ -18,37 +19,7 @@ class InjectedCTE(JsonSchemaMixin, Replaceable):
     sql: Optional[str] = None
 
 
-# for some frustrating reasion, we can't subclass from CompiledNode directly,
-# or typing.Union will flatten CompiledNode+ParsedNode into just ParsedNode.
-# TODO: understand that issue and come up with some way for these two to share
-# logic
-
-@dataclass
-class CompiledNode(
-        UnparsedNode,
-        HasUniqueID,
-        HasFqn,
-        CanRef,
-        HasRelationMetadata,
-        ParsedNodeMixins):
-    compiled: bool
-    compiled_sql: Optional[str]
-    extra_ctes_injected: bool
-    extra_ctes: List[InjectedCTE]
-    injected_sql: Optional[str]
-    alias: str
-    empty: bool
-    tags: List[str]
-    config: NodeConfig
-    docrefs: List[Docref] = field(default_factory=list)
-    description: str = field(default='')
-    columns: Dict[str, ColumnInfo] = field(default_factory=dict)
-    patch_path: Optional[str] = field(default=None)
-    build_path: Optional[str] = field(default=None)
-    column_name: Optional[str] = field(default=None)
-    index: Optional[int] = None
-    wrapped_sql: Optional[str] = None
-
+class CompiledNodeMixins:
     def prepend_ctes(self, prepended_ctes):
         self.extra_ctes_injected = True
         self.extra_ctes = prepended_ctes
@@ -68,6 +39,66 @@ class CompiledNode(
                 break
         else:
             self.extra_ctes.append(InjectedCTE(id=cte_id, sql=sql))
+
+
+# for some frustrating reasion, we can't subclass from CompiledNode directly,
+# or typing.Union will flatten CompiledNode+ParsedNode into just ParsedNode.
+# TODO: understand that issue and come up with some way for these two to share
+# logic
+
+@dataclass
+class CompiledNode(
+        UnparsedNode,
+        HasUniqueID,
+        HasFqn,
+        CanRef,
+        HasRelationMetadata,
+        ParsedNodeMixins,
+        CompiledNodeMixins):
+    compiled: bool
+    compiled_sql: Optional[str]
+    extra_ctes_injected: bool
+    extra_ctes: List[InjectedCTE]
+    injected_sql: Optional[str]
+    alias: str
+    empty: bool
+    tags: List[str]
+    config: NodeConfig
+    docrefs: List[Docref] = field(default_factory=list)
+    description: str = field(default='')
+    columns: Dict[str, ColumnInfo] = field(default_factory=dict)
+    patch_path: Optional[str] = field(default=None)
+    build_path: Optional[str] = field(default=None)
+    index: Optional[int] = None
+    wrapped_sql: Optional[str] = None
+
+
+@dataclass
+class CompiledTestNode(
+        UnparsedNode,
+        HasUniqueID,
+        HasFqn,
+        CanRef,
+        HasRelationMetadata,
+        ParsedNodeMixins,
+        CompiledNodeMixins):
+    compiled: bool
+    compiled_sql: Optional[str]
+    extra_ctes_injected: bool
+    extra_ctes: List[InjectedCTE]
+    injected_sql: Optional[str]
+    resource_type: TestType
+    alias: str
+    empty: bool
+    tags: List[str]
+    config: TestConfig
+    docrefs: List[Docref] = field(default_factory=list)
+    description: str = field(default='')
+    columns: Dict[str, ColumnInfo] = field(default_factory=dict)
+    patch_path: Optional[str] = None
+    build_path: Optional[str] = None
+    column_name: Optional[str] = None
+    wrapped_sql: Optional[str] = None
 
 
 @dataclass
@@ -133,4 +164,8 @@ def _inject_ctes_into_sql(sql, ctes):
 # We allow either parsed or compiled nodes, or parsed sources, as some
 # 'compile()' calls in the runner actually just return the original parsed
 # node they were given.
-CompileResultNode = Union[CompiledNode, ParsedNode, ParsedSourceDefinition]
+CompileResultNode = Union[
+    CompiledNode, ParsedNode,
+    CompiledTestNode, ParsedTestNode,
+    ParsedSourceDefinition,
+]

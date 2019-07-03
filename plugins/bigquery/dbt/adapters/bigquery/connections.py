@@ -117,7 +117,7 @@ class BigQueryConnectionManager(BaseConnectionManager):
             keyfile = profile_credentials.keyfile
             return creds.from_service_account_file(keyfile, scopes=cls.SCOPE)
 
-        elif method == BigQueryConnectionMethod.SERVICE_ACCOUNT:
+        elif method == BigQueryConnectionMethod.SERVICE_ACCOUNT_JSON:
             details = profile_credentials.keyfile_json
             return creds.from_service_account_info(details, scopes=cls.SCOPE)
 

@@ -4,6 +4,8 @@ import os
 import re
 import hashlib
 
+from hologram import ValidationError
+
 import dbt.exceptions
 import dbt.flags
 import dbt.utils
@@ -21,9 +23,11 @@ from dbt.logger import GLOBAL_LOGGER as logger
 from dbt.utils import get_pseudo_test_path
 from dbt.contracts.graph.unparsed import UnparsedNode, UnparsedNodeUpdate, \
     UnparsedSourceDefinition
-from dbt.contracts.graph.parsed import ParsedNodePatch, ParsedSourceDefinition
+from dbt.contracts.graph.parsed import ParsedNodePatch, ParsedTestNode, \
+    ParsedSourceDefinition
 from dbt.parser.base import MacrosKnownParser
 from dbt.config.renderer import ConfigRenderer
+from dbt.exceptions import JSONValidationException
 
 from typing import Dict, List
 
@@ -233,9 +237,12 @@ def _filter_validate(filepath, location, values, validate):
             continue
         try:
             yield validate(value)
-        except dbt.exceptions.JSONValidationException as exc:
             # we don't want to fail the full run, but we do want to fail
             # parsing this file
+        except ValidationError as exc:
+            warn_invalid(filepath, location, value, '- ' + str(exc))
+            continue
+        except JSONValidationException as exc:
             warn_invalid(filepath, location, value, '- ' + exc.msg)
             continue
 
@@ -278,6 +285,9 @@ class SchemaBaseTestParser(MacrosKnownParser):
                     '\n\t{}'.format(path, exc.msg), None
                 )
                 continue
+
+    def _parse_from_dict(self, parsed_dict):
+        return ParsedTestNode.from_dict(parsed_dict)
 
     def build_test_node(self, test_target, package_name, test, root_dir, path,
                         column_name=None):

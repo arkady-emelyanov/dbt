@@ -281,7 +281,7 @@ class GraphRunnableTask(ManifestTask):
         selected_uids = frozenset(n.unique_id for n in self._flattened_nodes)
         result = self.execute_with_hooks(selected_uids)
 
-        result.write(self.result_path())
+        result.write(self.result_path(), omit_none=False)
 
         self.task_end_messages(result.results)
         return result.results

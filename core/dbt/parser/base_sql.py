@@ -11,6 +11,8 @@ from dbt.contracts.graph.unparsed import UnparsedNode
 from dbt.parser.base import MacrosKnownParser
 from dbt.node_types import NodeType
 
+from hologram import ValidationError
+
 
 class BaseSqlParser(MacrosKnownParser):
     UnparsedNodeType = UnparsedNode
@@ -81,7 +83,11 @@ class BaseSqlParser(MacrosKnownParser):
                 node.name, node.original_file_path, node.raw_sql
             )
 
-        node_parsed = self.parse_node(node, unique_id, project, tags=tags)
+        try:
+            node_parsed = self.parse_node(node, unique_id, project, tags=tags)
+        except ValidationError as exc:
+            # we got a ValidationError - probably bad types in config()
+            raise dbt.exceptions.ValidationException(str(exc)) from exc
 
         if not parse_ok:
             # if we had a parse error in parse_node, we would not get here. So

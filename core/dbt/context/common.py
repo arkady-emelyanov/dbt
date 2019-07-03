@@ -3,8 +3,7 @@ import os
 
 from dbt.adapters.factory import get_adapter
 from dbt.node_types import NodeType
-from dbt.contracts.graph.parsed import ParsedMacro, ParsedNode
-from dbt.contracts.graph.compiled import CompiledNode
+from dbt.contracts.graph.parsed import ParsedMacro
 from dbt.include.global_project import PACKAGES
 from dbt.include.global_project import PROJECT_NAME as GLOBAL_PROJECT_NAME
 
@@ -231,9 +230,12 @@ class Var:
             local_vars = model.get('config', {}).get('vars', {})
             self.model_name = model.get('name')
         elif isinstance(model, ParsedMacro):
-            local_vars = {}  # macros have no config
+            local_vars = {}
             self.model_name = model.name
-        elif isinstance(model, (ParsedNode, CompiledNode)):
+        elif hasattr(model, 'name'):
+            # handle all manner of Node objects
+            # TODO: maybe we should register them against an abstract base
+            # class so we can just do an `isinstance` check?
             local_vars = model.config.vars
             self.model_name = model.name
         elif model is None:
@@ -241,10 +243,10 @@ class Var:
             self.model_name = '<Configuration>'
             local_vars = {}
         else:
-            # TODO: is this reachable anymore?
-            # still used for wrapping?
-            self.model_name = model.nice_name
-            local_vars = model.config.get('vars', {})
+            raise dbt.exceptions.InternalException(
+                'Could not call Var() for unknown model {} with type {}'
+                .format(model, type(model))
+            )
 
         self.local_vars = dbt.utils.merge(local_vars, overrides)
 

@@ -42,7 +42,7 @@ class UnparsedRunHook(UnparsedNode):
 class NamedTested(JsonSchemaMixin, Replaceable):
     name: str
     description: str = ''
-    tests: Optional[List[Union[str, Dict[str, Any]]]] = None
+    tests: Optional[List[Union[Dict[str, Any], str]]] = None
 
     def __post_init__(self):
         if self.tests is None:
@@ -53,6 +53,10 @@ class NamedTested(JsonSchemaMixin, Replaceable):
 class ColumnDescription(JsonSchemaMixin, Replaceable):
     columns: Optional[List[NamedTested]]
 
+    def __post_init__(self):
+        if self.columns is None:
+            self.columns = []
+
 
 @dataclass
 class NodeDescription(NamedTested):
@@ -61,7 +65,9 @@ class NodeDescription(NamedTested):
 
 @dataclass
 class UnparsedNodeUpdate(NodeDescription, ColumnDescription):
-    pass
+    def __post_init__(self):
+        NodeDescription.__post_init__(self)
+        ColumnDescription.__post_init__(self)
 
 
 class TimePeriod(Enum):
@@ -95,6 +101,10 @@ class UnparsedSourceTableDefinition(NodeDescription, ColumnDescription):
     identifier: Optional[str] = None
     quoting: Quoting = field(default_factory=Quoting)
     freshness: FreshnessThreshold = field(default_factory=FreshnessThreshold)
+
+    def __post_init__(self):
+        NodeDescription.__post_init__(self)
+        ColumnDescription.__post_init__(self)
 
 
 @dataclass

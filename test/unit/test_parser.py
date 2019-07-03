@@ -14,7 +14,8 @@ from dbt.parser.source_config import SourceConfig
 from dbt.node_types import NodeType
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.parsed import ParsedNode, ParsedMacro, \
-    ParsedNodePatch, ParsedSourceDefinition, NodeConfig, DependsOn, ColumnInfo
+    ParsedNodePatch, ParsedSourceDefinition, NodeConfig, DependsOn, \
+    ColumnInfo, ParsedTestNode, TestConfig
 from dbt.contracts.graph.unparsed import FreshnessThreshold, Quoting, Time, \
     TimePeriod
 
@@ -182,8 +183,19 @@ class SchemaParserTest(BaseParserTest):
             'tags': [],
         })
 
-        self.test_config = self.model_config.replace(severity='ERROR')
-        self.warn_test_config = self.model_config.replace(severity='WARN')
+        self.test_config = TestConfig.from_dict({
+            'enabled': True,
+            'materialized': 'view',
+            'persist_docs': {},
+            'post-hook': [],
+            'pre-hook': [],
+            'vars': {},
+            'quoting': {},
+            'column_types': {},
+            'tags': [],
+            'severity': 'ERROR',
+        })
+        self.warn_test_config = self.test_config.replace(severity='WARN')
 
         self.disabled_config = {
             'enabled': False,
@@ -225,7 +237,7 @@ class SchemaParserTest(BaseParserTest):
         )
 
         self._expected_source_tests = [
-            ParsedNode(
+            ParsedTestNode(
                 alias='source_accepted_values_my_source_my_table_id__a__b',
                 name='source_accepted_values_my_source_my_table_id__a__b',
                 database='test',
@@ -248,9 +260,9 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='ERROR') }}{{ test_accepted_values(model=source('my_source', 'my_table'), column_name='id', values=['a', 'b']) }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='source_not_null_my_source_my_table_id',
                 name='source_not_null_my_source_my_table_id',
                 database='test',
@@ -271,9 +283,9 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='ERROR') }}{{ test_not_null(model=source('my_source', 'my_table'), column_name='id') }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='source_relationships_my_source_my_table_id__id__ref_model_two_',
                 name='source_relationships_my_source_my_table_id__id__ref_model_two_',
                 database='test',
@@ -295,9 +307,9 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='ERROR') }}{{ test_relationships(model=source('my_source', 'my_table'), column_name='id', from='id', to=ref('model_two')) }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='source_some_test_my_source_my_table_value',
                 name='source_some_test_my_source_my_table_value',
                 database='test',
@@ -317,9 +329,9 @@ class SchemaParserTest(BaseParserTest):
                 tags=['schema'],
                 raw_sql="{{ config(severity='WARN') }}{{ snowplow.test_some_test(model=source('my_source', 'my_table'), key='value') }}",
                 description='',
-                columns={}
+                columns={},
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='source_unique_my_source_my_table_id',
                 name='source_unique_my_source_my_table_id',
                 database='test',
@@ -340,12 +352,12 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='WARN') }}{{ test_unique(model=source('my_source', 'my_table'), column_name='id') }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
         ]
 
         self._expected_model_tests = [
-            ParsedNode(
+            ParsedTestNode(
                 alias='accepted_values_model_one_id__a__b',
                 name='accepted_values_model_one_id__a__b',
                 database='test',
@@ -368,9 +380,9 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='ERROR') }}{{ test_accepted_values(model=ref('model_one'), column_name='id', values=['a', 'b']) }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='not_null_model_one_id',
                 name='not_null_model_one_id',
                 database='test',
@@ -391,9 +403,9 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='ERROR') }}{{ test_not_null(model=ref('model_one'), column_name='id') }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='relationships_model_one_id__id__ref_model_two_',
                 name='relationships_model_one_id__id__ref_model_two_',
                 database='test',
@@ -415,9 +427,9 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='ERROR') }}{{ test_relationships(model=ref('model_one'), column_name='id', from='id', to=ref('model_two')) }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='some_test_model_one_value',
                 name='some_test_model_one_value',
                 database='test',
@@ -437,9 +449,9 @@ class SchemaParserTest(BaseParserTest):
                 tags=['schema'],
                 raw_sql="{{ config(severity='WARN') }}{{ snowplow.test_some_test(model=ref('model_one'), key='value') }}",
                 description='',
-                columns={}
+                columns={},
             ),
-            ParsedNode(
+            ParsedTestNode(
                 alias='unique_model_one_id',
                 name='unique_model_one_id',
                 database='test',
@@ -460,7 +472,7 @@ class SchemaParserTest(BaseParserTest):
                 raw_sql="{{ config(severity='WARN') }}{{ test_unique(model=ref('model_one'), column_name='id') }}",
                 description='',
                 columns={},
-                column_name='id'
+                column_name='id',
             ),
         ]
 
@@ -1649,7 +1661,6 @@ class ParserTest(BaseParserTest):
                         'columns': {},
                         'description': '',
                         'build_path': None,
-                        'column_name': None,
                         'index': None,
                         'patch_path': None,
                     },
@@ -1679,7 +1690,6 @@ class ParserTest(BaseParserTest):
                         'columns': {},
                         'description': '',
                         'build_path': None,
-                        'column_name': None,
                         'index': None,
                         'patch_path': None,
                     },
@@ -1709,7 +1719,6 @@ class ParserTest(BaseParserTest):
                         'columns': {},
                         'description': '',
                         'build_path': None,
-                        'column_name': None,
                         'index': None,
                         'patch_path': None,
                     }

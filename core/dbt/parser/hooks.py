@@ -58,7 +58,10 @@ class HookParser(BaseSqlParser):
                     'index': i
                 })
 
-        tags = [hook_type]
+        # hook_type is a RunHookType member, which "is a string", but it's also
+        # an enum, so hologram gets mad about that before even looking at if
+        # it's a string - bypass it by explicitly calling str().
+        tags = [str(hook_type)]
         results = self.parse_sql_nodes(result, tags=tags)
         return results.parsed
 
