@@ -1,5 +1,5 @@
 from dbt.contracts.graph.manifest import CompileResultNode
-from dbt.contracts.graph.unparsed import Time
+from dbt.contracts.graph.unparsed import Time, FreshnessStatus
 from dbt.contracts.graph.parsed import ParsedSourceDefinition
 from dbt.contracts.util import Writable
 from hologram.helpers import StrEnum
@@ -77,39 +77,24 @@ class ExecutionResult(JsonSchemaMixin, Writable):
     elapsed_time: Real
 
 
-class FreshnessStatus(StrEnum):
-    Pass = 'pass'
-    Warn = 'warn'
-    Error = 'error'
-
-
-@dataclass(init=False)
-class SourceFreshnessResult(PartialResult):
+# due to issues with typing.Union collapsing subclasses, this can't subclass
+# PartialResult
+@dataclass
+class SourceFreshnessResult(JsonSchemaMixin, Writable):
+    node: ParsedSourceDefinition
     max_loaded_at: datetime
     snapshotted_at: datetime
     age: Real
     status: FreshnessStatus
-    node: ParsedSourceDefinition
+    error: Optional[str] = None
+    status: Union[None, str, int, bool] = None
+    execution_time: Union[str, int] = 0
+    thread_id: Optional[int] = 0
+    timing: List[TimingInfo] = field(default_factory=list)
+    fail: Optional[bool] = None
 
-    def __init__(
-        self,
-        max_loaded_at: datetime,
-        snapshotted_at: datetime,
-        age: float,
-        status: FreshnessStatus,
-        node: ParsedSourceDefinition,
-        **kwargs,
-    ) -> None:
-        self.max_loaded_at = max_loaded_at
-        self.snapshotted_at = snapshotted_at
-        self.age = age
-        self.status = status
-        self.node = node
-        super().__init__(**kwargs)
-
-    @property
-    def failed(self):
-        return self.status == 'error'
+    def __post_init__(self):
+        self.fail = self.status == 'error'
 
     @property
     def skipped(self):
@@ -126,7 +111,7 @@ class FreshnessMetadata(JsonSchemaMixin):
 class FreshnessExecutionResult(FreshnessMetadata):
     results: List[Union[PartialResult, SourceFreshnessResult]]
 
-    def write(self, path):
+    def write(self, path, omit_none=True):
         """Create a new object with the desired output schema and write it."""
         meta = FreshnessMetadata(
             generated_at=self.generated_at,
@@ -136,21 +121,21 @@ class FreshnessExecutionResult(FreshnessMetadata):
         for result in self.results:
             unique_id = result.node.unique_id
             if result.error is not None:
-                result_dict = {
-                    'error': result.error,
-                    'state': 'runtime error'
-                }
+                result_value = SourceFreshnessRuntimeError(
+                    error=result.error,
+                    state=FreshnessErrorEnum.runtime_error,
+                )
             else:
-                result_dict = {
-                    'max_loaded_at': result.max_loaded_at,
-                    'snapshotted_at': result.snapshotted_at,
-                    'max_loaded_at_time_ago_in_s': result.age,
-                    'state': result.status,
-                    'criteria': result.node.freshness,
-                }
-            sources[unique_id] = result_dict
+                result_value = SourceFreshnessOutput(
+                    max_loaded_at=result.max_loaded_at,
+                    snapshotted_at=result.snapshotted_at,
+                    max_loaded_at_time_ago_in_s=result.age,
+                    state=result.status,
+                    criteria=result.node.freshness,
+                )
+            sources[unique_id] = result_value
         output = FreshnessRunOutput(meta=meta, sources=sources)
-        output.write(path)
+        output.write(path, omit_none=omit_none)
 
 
 def _copykeys(src, keys, **updates):
@@ -187,7 +172,7 @@ SourceFreshnessRunResult = Union[SourceFreshnessOutput,
 
 
 @dataclass
-class FreshnessRunOutput(JsonSchemaMixin):
+class FreshnessRunOutput(JsonSchemaMixin, Writable):
     meta: FreshnessMetadata
     sources: Dict[str, SourceFreshnessRunResult]
 
@@ -196,6 +181,7 @@ class FreshnessRunOutput(JsonSchemaMixin):
 class RemoteCompileResult(JsonSchemaMixin):
     raw_sql: str
     compiled_sql: str
+    node: CompileResultNode
     timing: List[TimingInfo]
 
     @property

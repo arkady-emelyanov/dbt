@@ -49,6 +49,10 @@ def build_edges(nodes):
     return _sort_values(forward_edges), _sort_values(backward_edges)
 
 
+def _deepcopy(value):
+    return value.from_dict(value.to_dict())
+
+
 @dataclass(init=False)
 class Manifest:
     """The manifest for the full graph, after parsing and during compilation.
@@ -320,11 +324,11 @@ class Manifest:
 
     def deepcopy(self, config=None):
         return Manifest(
-            nodes={k: v.incorporate() for k, v in self.nodes.items()},
-            macros={k: v.incorporate() for k, v in self.macros.items()},
-            docs={k: v.incorporate() for k, v in self.docs.items()},
+            nodes={k: _deepcopy(v) for k, v in self.nodes.items()},
+            macros={k: _deepcopy(v) for k, v in self.macros.items()},
+            docs={k: _deepcopy(v) for k, v in self.docs.items()},
             generated_at=self.generated_at,
-            disabled=[n.incorporate() for n in self.disabled],
+            disabled=[_deepcopy(n) for n in self.disabled],
             config=config
         )
 

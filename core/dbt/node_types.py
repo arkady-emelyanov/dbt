@@ -52,3 +52,23 @@ class DocumentationType(StrEnum):
 class RunHookType(StrEnum):
     Start = 'on-run-start'
     End = 'on-run-end'
+
+
+class OperationType(StrEnum):
+    Operation = str(NodeType.Operation)
+
+
+class SnapshotType(StrEnum):
+    Snapshot = str(NodeType.Snapshot)
+
+
+class MacroType(StrEnum):
+    Macro = str(NodeType.Macro)
+
+
+class SourceType(StrEnum):
+    Source = str(NodeType.Source)
+
+
+class TestType(StrEnum):
+    Test = str(NodeType.Test)

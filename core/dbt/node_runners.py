@@ -2,8 +2,10 @@ from dbt.logger import GLOBAL_LOGGER as logger
 from dbt.exceptions import NotImplementedException, CompilationException, \
     RuntimeException, InternalException, missing_materialization
 from dbt.node_types import NodeType
-from dbt.contracts.results import RunModelResult, collect_timing_info, \
-    SourceFreshnessResult, PartialResult, RemoteCompileResult, RemoteRunResult
+from dbt.contracts.results import (
+    RunModelResult, collect_timing_info, SourceFreshnessResult, PartialResult,
+    RemoteCompileResult, RemoteRunResult, ResultTable,
+)
 from dbt.compilation import compile_node
 
 import dbt.context.runtime
@@ -16,7 +18,6 @@ from dbt import rpc
 import threading
 import time
 import traceback
-from datetime import timedelta
 
 
 INTERNAL_ERROR_STRING = """This is an error in dbt. Please try again. If \
@@ -372,28 +373,6 @@ class FreshnessRunner(BaseRunner):
                                                    self.node_index,
                                                    self.num_nodes)
 
-    def _calculate_status(self, target_freshness, freshness):
-        """Calculate the status of a run.
-
-        :param dict target_freshness: The target freshness dictionary. It must
-            match the freshness spec.
-        :param timedelta freshness: The actual freshness of the data, as
-            calculated from the database's timestamps
-        """
-        # if freshness > warn_after > error_after, you'll get an error, not a
-        # warning
-        for key in ('error', 'warn'):
-            fullkey = '{}_after'.format(key)
-            if fullkey not in target_freshness:
-                continue
-
-            target = target_freshness[fullkey]
-            kwname = target['period'] + 's'
-            kwargs = {kwname: target['count']}
-            if freshness > timedelta(**kwargs).total_seconds():
-                return key
-        return 'pass'
-
     def _build_run_result(self, node, start_time, error, status, timing_info,
                           skip=False, failed=None):
         execution_time = time.time() - start_time
@@ -425,10 +404,7 @@ class FreshnessRunner(BaseRunner):
                 manifest=manifest
             )
 
-        status = self._calculate_status(
-            compiled_node.freshness,
-            freshness['age']
-        )
+        status = compiled_node.freshness.status(freshness['age'])
 
         return SourceFreshnessResult(
             node=compiled_node,
@@ -528,6 +504,7 @@ class RPCCompileRunner(CompileRunner):
         super().__init__(config, adapter, node, node_index, num_nodes)
 
     def handle_exception(self, e, ctx):
+        logger.debug('Got an exception: {}'.format(e), exc_info=True)
         if isinstance(e, dbt.exceptions.Exception):
             if isinstance(e, dbt.exceptions.RuntimeException):
                 e.node = ctx.node
@@ -551,7 +528,8 @@ class RPCCompileRunner(CompileRunner):
         return RemoteCompileResult(
             raw_sql=compiled_node.raw_sql,
             compiled_sql=compiled_node.injected_sql,
-            node=compiled_node
+            node=compiled_node,
+            timing=[],  # this will get added later
         )
 
     def error_result(self, node, error, start_time, timing_info):
@@ -584,14 +562,16 @@ class RPCExecuteRunner(RPCCompileRunner):
     def execute(self, compiled_node, manifest):
         status, table = self.adapter.execute(compiled_node.injected_sql,
                                              fetch=True)
-        table = {
-            'column_names': list(table.column_names),
-            'rows': [list(row) for row in table]
-        }
+
+        table = ResultTable(
+            column_names=list(table.column_names),
+            rows=[list(row) for row in table],
+        )
 
         return RemoteRunResult(
             raw_sql=compiled_node.raw_sql,
             compiled_sql=compiled_node.injected_sql,
             node=compiled_node,
-            table=table
+            table=table,
+            timing=[],
         )

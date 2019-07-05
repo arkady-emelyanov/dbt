@@ -98,7 +98,8 @@ class RuntimeException(RuntimeError, Exception):
 
         result.update({
             'raw_sql': self.node.raw_sql,
-            'compiled_sql': self.node.injected_sql,
+            # the node isn't always compiled, but if it is, include that!
+            'compiled_sql': getattr(self.node, 'injected_sql', None),
         })
         return result
 
@@ -148,7 +149,7 @@ class DatabaseException(RuntimeException):
     def process_stack(self):
         lines = []
 
-        if self.node is not None and self.node.build_path:
+        if hasattr(self.node, 'build_path') and self.node.build_path:
             lines.append("compiled SQL at {}".format(self.node.build_path))
 
         return lines + RuntimeException.process_stack(self)

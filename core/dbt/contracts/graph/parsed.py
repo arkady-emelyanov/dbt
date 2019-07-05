@@ -1,17 +1,32 @@
-from dbt.node_types import NodeType
+from dataclasses import dataclass, field
+from typing import Optional, Union, List, Dict, Any
+
+from hologram import JsonSchemaMixin
+from hologram.helpers import StrEnum, NewPatternType
 
 import dbt.clients.jinja
-
-from dbt.contracts.graph.unparsed import UnparsedNode, UnparsedMacro, \
-    UnparsedDocumentationFile, Quoting, UnparsedBaseNode, FreshnessThreshold
+from dbt.contracts.graph.unparsed import (
+    UnparsedNode, UnparsedMacro, UnparsedDocumentationFile, Quoting,
+    UnparsedBaseNode, FreshnessThreshold
+)
 from dbt.contracts.util import Replaceable
 
 from dbt.logger import GLOBAL_LOGGER as logger  # noqa
-from hologram import JsonSchemaMixin
-from hologram.helpers import StrLiteral, NewPatternType
+from dbt.node_types import (
+    NodeType, SourceType, SnapshotType, MacroType, TestType
+)
 
-from dataclasses import dataclass, field
-from typing import Optional, Union, List, Dict, Any
+
+class TimestampStrategy(StrEnum):
+    Timestamp = 'timestamp'
+
+
+class CheckStrategy(StrEnum):
+    Check = 'check'
+
+
+class All(StrEnum):
+    All = 'all'
 
 
 @dataclass
@@ -200,9 +215,6 @@ class TestConfig(NodeConfig):
     severity: Severity = 'error'
 
 
-TestType = StrLiteral(NodeType.Test)
-
-
 @dataclass
 class ParsedTestNode(
         UnparsedNode,
@@ -244,17 +256,14 @@ class _SnapshotConfig(NodeConfig):
         super().__init__(**kwargs)
 
 
-_TSEnum = StrLiteral('timestamp')
-_CCEnum = StrLiteral('check')
-All = StrLiteral('all')
-
-
 @dataclass(init=False)
 class TimestampSnapshotConfig(_SnapshotConfig):
-    strategy: _TSEnum
+    strategy: TimestampStrategy
     updated_at: str
 
-    def __init__(self, strategy: _TSEnum, updated_at: str, **kwargs) -> None:
+    def __init__(
+        self, strategy: TimestampStrategy, updated_at: str, **kwargs
+    ) -> None:
         self.strategy = strategy
         self.updated_at = updated_at
         super().__init__(**kwargs)
@@ -262,7 +271,7 @@ class TimestampSnapshotConfig(_SnapshotConfig):
 
 @dataclass(init=False)
 class CheckSnapshotConfig(_SnapshotConfig):
-    strategy: _CCEnum
+    strategy: CheckStrategy
     # TODO: is there a way to get this to accept tuples of strings? Adding
     # `Tuple[str, ...]` to the list of types results in this:
     # ['email'] is valid under each of {'type': 'array', 'items':
@@ -272,91 +281,13 @@ class CheckSnapshotConfig(_SnapshotConfig):
     # are meaningful in json
     check_cols: Union[All, List[str]]
 
-<<<<<<< HEAD
-    @property
-    def config(self):
-        return self._contents['config']
-
-    @config.setter
-    def config(self, value):
-        self._contents['config'] = value
-
-
-SNAPSHOT_CONFIG_CONTRACT = {
-    'properties': {
-        'target_database': {
-            'type': 'string',
-        },
-        'target_schema': {
-            'type': 'string',
-        },
-        'unique_key': {
-            'type': 'string',
-        },
-        'anyOf': [
-            {
-                'properties': {
-                    'strategy': {
-                        'enum': ['timestamp'],
-                    },
-                    'updated_at': {
-                        'type': 'string',
-                        'description': (
-                            'The column name with the timestamp to compare'
-                        ),
-                    },
-                },
-                'required': ['updated_at'],
-            },
-            {
-                'properties': {
-                    'strategy': {
-                        'enum': ['check'],
-                    },
-                    'check_cols': {
-                        'oneOf': [
-                            {
-                                'type': 'array',
-                                'items': {'type': 'string'},
-                                'description': 'The columns to check',
-                                'minLength': 1,
-                            },
-                            {
-                                'enum': ['all'],
-                                'description': 'Check all columns',
-                            },
-                        ],
-                    },
-                },
-                'required': ['check_cols'],
-            }
-        ]
-    },
-    'required': [
-        'target_schema', 'unique_key', 'strategy',
-    ],
-}
-
-
-PARSED_SNAPSHOT_NODE_CONTRACT = deep_merge(
-    PARSED_NODE_CONTRACT,
-    {
-        'properties': {
-            'config': SNAPSHOT_CONFIG_CONTRACT,
-            'resource_type': {
-                'enum': [NodeType.Snapshot],
-            },
-        },
-    }
-)
-=======
     def __init__(
-        self, strategy: _CCEnum, check_cols: Union[All, List[str]], **kwargs
+        self, strategy: CheckStrategy, check_cols: Union[All, List[str]],
+        **kwargs
     ) -> None:
         self.strategy = strategy
         self.check_cols = check_cols
         super().__init__(**kwargs)
->>>>>>> 2312cb3a... initial dataclasses work
 
 
 @dataclass
@@ -367,13 +298,13 @@ class IntermediateSnapshotNode(ParsedNode):
     # defined in config blocks. To fix that, we have an intermediate type that
     # uses a regular node config, which the snapshot parser will then convert
     # into a full ParsedSnapshotNode after rendering.
-    resource_type: StrLiteral(NodeType.Snapshot)
+    resource_type: SnapshotType
     config: NodeConfig
 
 
 @dataclass
 class ParsedSnapshotNode(ParsedNode):
-    resource_type: StrLiteral(NodeType.Snapshot)
+    resource_type: SnapshotType
     config: Union[CheckSnapshotConfig, TimestampSnapshotConfig]
 
 
@@ -397,7 +328,7 @@ class _MacroDependsOn(JsonSchemaMixin, Replaceable):
 @dataclass
 class ParsedMacro(UnparsedMacro):
     name: str
-    resource_type: StrLiteral(NodeType.Macro)
+    resource_type: MacroType
     unique_id: str
     tags: List[str]
     depends_on: _MacroDependsOn
@@ -429,7 +360,7 @@ class ParsedSourceDefinition(
     source_description: str
     loader: str
     identifier: str
-    resource_type: StrLiteral(NodeType.Source)
+    resource_type: SourceType
     loaded_at_field: Optional[str]
     freshness: FreshnessThreshold = field(default_factory=FreshnessThreshold)
     docrefs: List[Docref] = field(default_factory=list)

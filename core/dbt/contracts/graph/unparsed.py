@@ -1,11 +1,13 @@
 from dbt.node_types import UnparsedNodeType, NodeType
 from dbt.contracts.util import Replaceable
+from dbt.node_types import UnparsedNodeType, NodeType, OperationType
+from dbt.contracts.util import Replaceable
 
 from hologram import JsonSchemaMixin
-from hologram.helpers import StrLiteral
+from hologram.helpers import StrEnum
 
 from dataclasses import dataclass, field
-from enum import Enum
+from datetime import timedelta
 from typing import Optional, List, Dict, Any, Union
 
 
@@ -35,6 +37,7 @@ class UnparsedNode(UnparsedBaseNode, HasSQL):
 
 @dataclass
 class UnparsedRunHook(UnparsedNode):
+    resource_type: OperationType
     index: Optional[int] = None
 
 
@@ -70,10 +73,13 @@ class UnparsedNodeUpdate(NodeDescription, ColumnDescription):
         ColumnDescription.__post_init__(self)
 
 
-class TimePeriod(Enum):
+class TimePeriod(StrEnum):
     minute = 'minute'
     hour = 'hour'
     day = 'day'
+
+    def plural(self) -> str:
+        return str(self) + 's'
 
 
 @dataclass
@@ -81,11 +87,30 @@ class Time(JsonSchemaMixin, Replaceable):
     count: int
     period: TimePeriod
 
+    def exceeded(self, actual_age: float) -> bool:
+        kwargs = {self.period.plural(): self.count}
+        difference = timedelta(**kwargs).total_seconds()
+        return actual_age > difference
+
+
+class FreshnessStatus(StrEnum):
+    Pass = 'pass'
+    Warn = 'warn'
+    Error = 'error'
+
 
 @dataclass
 class FreshnessThreshold(JsonSchemaMixin, Replaceable):
     warn_after: Optional[Time] = None
     error_after: Optional[Time] = None
+
+    def status(self, age: float) -> FreshnessStatus:
+        if self.error_after and self.error_after.exceeded(age):
+            return FreshnessStatus.Error
+        elif self.warn_after and self.warn_after.exceeded(age):
+            return FreshnessStatus.Warn
+        else:
+            return FreshnessStatus.Pass
 
 
 @dataclass
