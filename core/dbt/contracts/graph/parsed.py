@@ -10,7 +10,6 @@ from dbt.contracts.graph.unparsed import (
     UnparsedBaseNode, FreshnessThreshold
 )
 from dbt.contracts.util import Replaceable
-
 from dbt.logger import GLOBAL_LOGGER as logger  # noqa
 from dbt.node_types import (
     NodeType, SourceType, SnapshotType, MacroType, TestType
@@ -187,6 +186,9 @@ class ParsedNodeMixins:
     def get_materialization(self):
         return self.config.materialized
 
+    def local_vars(self):
+        return self.config.vars
+
 
 # TODO(jeb): hooks should get their own parsed type instead of including
 # index everywhere!
@@ -199,7 +201,6 @@ class ParsedNode(
         HasRelationMetadata,
         ParsedNodeMixins):
     alias: str
-    empty: bool
     tags: List[str]
     config: NodeConfig
     docrefs: List[Docref] = field(default_factory=list)
@@ -225,7 +226,6 @@ class ParsedTestNode(
         ParsedNodeMixins):
     resource_type: TestType
     alias: str
-    empty: bool
     tags: List[str]
     config: TestConfig
     docrefs: List[Docref] = field(default_factory=list)
@@ -239,8 +239,8 @@ class ParsedTestNode(
 @dataclass(init=False)
 class _SnapshotConfig(NodeConfig):
     unique_key: str
-    target_database: str = None
     target_schema: str = None
+    target_database: str = None
 
     def __init__(
         self,
@@ -332,6 +332,9 @@ class ParsedMacro(UnparsedMacro):
     unique_id: str
     tags: List[str]
     depends_on: _MacroDependsOn
+
+    def local_vars(self):
+        return {}
 
     @property
     def generator(self):

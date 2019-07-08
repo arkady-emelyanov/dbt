@@ -19,7 +19,7 @@ class InjectedCTE(JsonSchemaMixin, Replaceable):
     sql: Optional[str] = None
 
 
-class CompiledNodeMixins:
+class CompiledNodeMixins(ParsedNodeMixins):
     def prepend_ctes(self, prepended_ctes):
         self.extra_ctes_injected = True
         self.extra_ctes = prepended_ctes
@@ -53,7 +53,6 @@ class CompiledNode(
         HasFqn,
         CanRef,
         HasRelationMetadata,
-        ParsedNodeMixins,
         CompiledNodeMixins):
     compiled: bool
     compiled_sql: Optional[str]
@@ -61,7 +60,6 @@ class CompiledNode(
     extra_ctes: List[InjectedCTE]
     injected_sql: Optional[str]
     alias: str
-    empty: bool
     tags: List[str]
     config: NodeConfig
     docrefs: List[Docref] = field(default_factory=list)
@@ -80,7 +78,6 @@ class CompiledTestNode(
         HasFqn,
         CanRef,
         HasRelationMetadata,
-        ParsedNodeMixins,
         CompiledNodeMixins):
     compiled: bool
     compiled_sql: Optional[str]
@@ -89,7 +86,6 @@ class CompiledTestNode(
     injected_sql: Optional[str]
     resource_type: TestType
     alias: str
-    empty: bool
     tags: List[str]
     config: TestConfig
     docrefs: List[Docref] = field(default_factory=list)

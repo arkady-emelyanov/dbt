@@ -170,10 +170,6 @@ class MacrosKnownParser(BaseParser):
         config_dict.update(config.config)
         self._mangle_hooks(config_dict)
 
-        empty = (
-            'raw_sql' in node_dict and len(node_dict['raw_sql'].strip()) == 0
-        )
-
         node_dict.update({
             'refs': [],
             'sources': [],
@@ -182,7 +178,6 @@ class MacrosKnownParser(BaseParser):
                 'macros': [],
             },
             'unique_id': node_path,
-            'empty': empty,
             'fqn': fqn,
             'tags': tags,
             'config': config_dict,
@@ -212,7 +207,7 @@ class MacrosKnownParser(BaseParser):
             config)
 
         dbt.clients.jinja.get_rendered(
-            parsed_node.raw_sql, context, parsed_node.to_dict(),
+            parsed_node.raw_sql, context, parsed_node,
             capture_macros=True)
 
     def _update_parsed_node_info(self, parsed_node, config):

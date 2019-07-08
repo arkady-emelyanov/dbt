@@ -1,5 +1,4 @@
 import dbt.exceptions
-from dbt.node_types import NodeType
 from dbt.parser.base import BaseParser
 from dbt.contracts.graph.unparsed import UnparsedDocumentationFile
 from dbt.contracts.graph.parsed import ParsedDocumentation
@@ -35,7 +34,6 @@ class DocumentationParser(BaseParser):
 
             yield UnparsedDocumentationFile(
                 root_path=root_dir,
-                resource_type=NodeType.Documentation,
                 path=path,
                 original_file_path=original_file_path,
                 package_name=package_name,

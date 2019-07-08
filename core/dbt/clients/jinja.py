@@ -76,7 +76,7 @@ class TemplateCache:
         template = get_template(
             string=node.raw_sql,
             ctx={},
-            node=node.to_dict(),
+            node=node,
         )
         self.file_cache[key] = template
 
@@ -170,7 +170,6 @@ def _is_dunder_name(name):
 
 def create_macro_capture_env(node):
 
-    # TODO: remove the to_dict() call and change this to use objects
     class ParserMacroCapture(jinja2.Undefined):
         """
         This class sets up the parser to capture macros.
@@ -179,21 +178,21 @@ def create_macro_capture_env(node):
             super().__init__(hint=hint, name=name)
             self.node = node
             self.name = name
-            self.package_name = node.get('package_name')
+            self.package_name = node.package_name
             # jinja uses these for safety, so we have to override them.
             # see https://github.com/pallets/jinja/blob/master/jinja2/sandbox.py#L332-L339 # noqa
             self.unsafe_callable = False
             self.alters_data = False
 
         def __deepcopy__(self, memo):
-            path = os.path.join(self.node.get('root_path'),
-                                self.node.get('original_file_path'))
+            path = os.path.join(self.node.root_path,
+                                self.node.original_file_path)
 
             logger.debug(
                 'dbt encountered an undefined variable, "{}" in node {}.{} '
                 '(source path: {})'
-                .format(self.name, self.node.get('package_name'),
-                        self.node.get('name'), path))
+                .format(self.name, self.node.package_name,
+                        self.node.name, path))
 
             # match jinja's message
             dbt.exceptions.raise_compiler_error(

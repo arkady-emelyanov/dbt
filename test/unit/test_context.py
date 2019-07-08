@@ -17,7 +17,6 @@ class TestVar(unittest.TestCase):
             resource_type='model',
             unique_id='model.root.model_one',
             fqn=['root', 'model_one'],
-            empty=False,
             package_name='root',
             original_file_path='model_one.sql',
             root_path='/usr/src/app',

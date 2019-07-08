@@ -1,7 +1,5 @@
-from dbt.node_types import UnparsedNodeType, NodeType
-from dbt.contracts.util import Replaceable
 from dbt.node_types import UnparsedNodeType, NodeType, OperationType
-from dbt.contracts.util import Replaceable
+from dbt.contracts.util import Replaceable, Mergeable
 
 from hologram import JsonSchemaMixin
 from hologram.helpers import StrEnum
@@ -22,6 +20,10 @@ class UnparsedBaseNode(JsonSchemaMixin, Replaceable):
 @dataclass
 class HasSQL:
     raw_sql: str
+
+    @property
+    def empty(self):
+        return not self.raw_sql.strip()
 
 
 @dataclass
@@ -100,7 +102,7 @@ class FreshnessStatus(StrEnum):
 
 
 @dataclass
-class FreshnessThreshold(JsonSchemaMixin, Replaceable):
+class FreshnessThreshold(JsonSchemaMixin, Mergeable):
     warn_after: Optional[Time] = None
     error_after: Optional[Time] = None
 
@@ -114,7 +116,7 @@ class FreshnessThreshold(JsonSchemaMixin, Replaceable):
 
 
 @dataclass
-class Quoting(JsonSchemaMixin, Replaceable):
+class Quoting(JsonSchemaMixin, Mergeable):
     database: Optional[bool] = None
     schema: Optional[bool] = None
     identifier: Optional[bool] = None
@@ -152,5 +154,7 @@ class UnparsedDocumentationFile(JsonSchemaMixin, Replaceable):
     path: str
     original_file_path: str
     file_contents: str
-    # TODO: remove this.
-    resource_type: StrLiteral(NodeType.Documentation)
+
+    @property
+    def resource_type(self):
+        return NodeType.Documentation

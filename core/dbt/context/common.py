@@ -3,7 +3,6 @@ import os
 
 from dbt.adapters.factory import get_adapter
 from dbt.node_types import NodeType
-from dbt.contracts.graph.parsed import ParsedMacro
 from dbt.include.global_project import PACKAGES
 from dbt.include.global_project import PROJECT_NAME as GLOBAL_PROJECT_NAME
 
@@ -225,28 +224,13 @@ class Var:
         # precedence over context-based var definitions
         self.overrides = overrides
 
-        if isinstance(model, dict) and model.get('unique_id'):
-            # TODO: is this reachable anymore?
-            local_vars = model.get('config', {}).get('vars', {})
-            self.model_name = model.get('name')
-        elif isinstance(model, ParsedMacro):
-            local_vars = {}
-            self.model_name = model.name
-        elif hasattr(model, 'name'):
-            # handle all manner of Node objects
-            # TODO: maybe we should register them against an abstract base
-            # class so we can just do an `isinstance` check?
-            local_vars = model.config.vars
-            self.model_name = model.name
-        elif model is None:
+        if model is None:
             # during config parsing we have no model and no local vars
             self.model_name = '<Configuration>'
             local_vars = {}
         else:
-            raise dbt.exceptions.InternalException(
-                'Could not call Var() for unknown model {} with type {}'
-                .format(model, type(model))
-            )
+            self.model_name = model.name
+            local_vars = model.local_vars()
 
         self.local_vars = dbt.utils.merge(local_vars, overrides)
 

@@ -15,7 +15,6 @@ import dbt.context.parser
 import dbt.contracts.project
 
 from dbt.contracts.graph.parsed import ColumnInfo, Docref
-from dbt.contracts.graph.unparsed import FreshnessThreshold, Quoting
 from dbt.context.common import generate_config_context
 from dbt.clients.jinja import get_rendered
 from dbt.node_types import NodeType
@@ -455,14 +454,9 @@ class SchemaSourceParser(SchemaBaseTestParser):
         get_rendered(source_description, context)
 
         loaded_at_field = table.loaded_at_field or source.loaded_at_field
-        # TODO: maybe hologram should do these deep merges + conversions?
-        freshness = FreshnessThreshold.from_dict(dbt.utils.deep_merge(
-            source.freshness.to_dict(), table.freshness.to_dict()
-        ))
+        freshness = source.freshness.merged(table.freshness)
 
-        quoting = Quoting.from_dict(dbt.utils.deep_merge(
-            source.quoting.to_dict(), table.quoting.to_dict()
-        ))
+        quoting = source.quoting.merged(table.quoting)
 
         default_database = self.root_project_config.credentials.database
         return ParsedSourceDefinition(

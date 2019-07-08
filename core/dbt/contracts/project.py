@@ -1,4 +1,4 @@
-from dbt.contracts.util import Replaceable
+from dbt.contracts.util import Replaceable, Mergeable
 from dbt.logger import GLOBAL_LOGGER as logger  # noqa
 from dbt import tracking
 from dbt.ui import printer
@@ -36,7 +36,7 @@ JsonSchemaMixin.register_field_encoders({Any: AnyEncoder()})
 
 
 @dataclass
-class Quoting(JsonSchemaMixin, Replaceable):
+class Quoting(JsonSchemaMixin, Mergeable):
     identifier: Optional[bool]
     schema: Optional[bool]
     database: Optional[bool]
