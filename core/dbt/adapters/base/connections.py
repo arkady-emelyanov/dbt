@@ -10,17 +10,21 @@ from dbt.contracts.util import Replaceable
 from dbt.logger import GLOBAL_LOGGER as logger
 from dbt.utils import translate_aliases
 
-from hologram import JsonSchemaMixin
+from hologram.helpers import ExtensibleJsonSchemaMixin
 
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Dict, Tuple
 
 
 @dataclass
-class Credentials(JsonSchemaMixin, Replaceable):
+class Credentials(
+    ExtensibleJsonSchemaMixin,
+    Replaceable,
+    metaclass=abc.ABCMeta
+):
     _ALIASES: ClassVar[Dict[str, str]] = field(default={}, init=False)
 
-    @property
+    @abc.abstractproperty
     def type(self):
         raise NotImplementedError(
             'type not implemented for base credentials class'
@@ -34,6 +38,7 @@ class Credentials(JsonSchemaMixin, Replaceable):
             if key in as_dict:
                 yield key, as_dict[key]
 
+    @abc.abstractmethod
     def _connection_keys(self) -> Tuple[str, ...]:
         raise NotImplementedError
 
@@ -55,6 +60,15 @@ class Credentials(JsonSchemaMixin, Replaceable):
                 if canonical_name in serialized
             })
         return serialized
+
+    @classmethod
+    def concrete_subclasses(cls):
+        subs = cls.__subclasses__()
+        while subs:
+            scls = subs.pop()
+            subs.extend(scls.__subclasses__())
+            if not scls.__abstractmethods__:
+                yield scls
 
 
 class BaseConnectionManager(metaclass=abc.ABCMeta):

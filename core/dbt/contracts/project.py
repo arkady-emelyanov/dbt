@@ -8,7 +8,7 @@ from hologram.helpers import HyphenatedJsonSchemaMixin, NewPatternType, \
     ExtensibleJsonSchemaMixin
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Union, Any
+from typing import Optional, List, Dict, Union, Any, NewType
 
 PIN_PACKAGE_URL = 'https://docs.getdbt.com/docs/package-management#section-specifying-package-versions' # noqa
 DEFAULT_SEND_ANONYMOUS_USAGE_STATS = True
@@ -26,13 +26,19 @@ SemverString = NewPatternType(
 )
 
 
-class AnyEncoder(FieldEncoder):
+class AnyCredentialsEncoder(FieldEncoder):
     @property
-    def json_schem(self):
-        return {'type': 'object', 'additionalProperties': True}
+    def json_schema(self):
+        return {
+            'type': ['null', 'string', 'number', 'array', 'boolean', 'object'],
+            'additionalProperties': True,
+        }
 
 
-JsonSchemaMixin.register_field_encoders({Any: AnyEncoder()})
+AnyCredentials = NewType('AnyCredentials', Any)
+JsonSchemaMixin.register_field_encoders(
+    {AnyCredentials: AnyCredentialsEncoder()}
+)
 
 
 @dataclass
@@ -150,7 +156,7 @@ class ProfileConfig(HyphenatedJsonSchemaMixin, Replaceable):
     config: UserConfig
     threads: int
     # TODO: make this a dynamic union of some kind?
-    credentials: Dict[str, Any]
+    credentials: Optional[AnyCredentials]
 
 
 @dataclass

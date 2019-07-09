@@ -335,8 +335,8 @@ class ParsedSnapshotNode(ParsedNode):
 
         # mess with config
         configs = [
-            (CheckStrategy.Check, CheckSnapshotConfig),
-            (TimestampStrategy.Timestamp, TimestampSnapshotConfig),
+            (str(CheckStrategy.Check), CheckSnapshotConfig),
+            (str(TimestampStrategy.Timestamp), TimestampSnapshotConfig),
         ]
 
         schema['properties']['config'] = _create_if_else_chain(

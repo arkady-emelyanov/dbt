@@ -111,10 +111,9 @@ class Profile:
         return self.to_profile_info() == other.to_profile_info()
 
     def validate(self):
-        # TODO: do we need this still?
-        # if self.credentials:
-        #     self.credentials.validate()
         try:
+            if self.credentials:
+                self.credentials.to_dict(validate=True)
             ProfileConfig.from_dict(
                 self.to_profile_info(serialize_credentials=True)
             )
