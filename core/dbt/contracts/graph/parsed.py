@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union, List, Dict, Any
+from typing import Optional, Union, List, Dict, Any, Type, Tuple
 
 from hologram import JsonSchemaMixin
 from hologram.helpers import StrEnum, NewPatternType
@@ -302,10 +302,47 @@ class IntermediateSnapshotNode(ParsedNode):
     config: NodeConfig
 
 
+def _create_if_else_chain(
+    key: str, criteria: List[Tuple[str, Type[JsonSchemaMixin]]]
+) -> dict:
+    """Mutate a given schema key that contains a 'oneOf' to instead be an
+    'if-then-else' chain. This results is much better/more consistent errors
+    from jsonschema.
+    """
+    result = schema = {}
+    criteria = criteria[:]
+    while criteria:
+        if_clause, then_clause = criteria.pop()
+        schema['if'] = {'properties': {
+            key: {'enum': [if_clause]}
+        }}
+        schema['then'] = then_clause.json_schema()
+        schema['else'] = {}
+        schema = schema['else']
+    schema['additionalProperties'] = False
+    schema['required'] = ['invalid']
+    return result
+
+
 @dataclass
 class ParsedSnapshotNode(ParsedNode):
     resource_type: SnapshotType
     config: Union[CheckSnapshotConfig, TimestampSnapshotConfig]
+
+    @classmethod
+    def json_schema(cls):
+        schema = super().json_schema()
+
+        # mess with config
+        configs = [
+            (CheckStrategy.Check, CheckSnapshotConfig),
+            (TimestampStrategy.Timestamp, TimestampSnapshotConfig),
+        ]
+
+        schema['properties']['config'] = _create_if_else_chain(
+            'strategy', configs
+        )
+        return schema
 
 
 # The parsed node update is only the 'patch', not the test. The test became a
