@@ -56,7 +56,7 @@ class NamedTested(JsonSchemaMixin, Replaceable):
 
 @dataclass
 class ColumnDescription(JsonSchemaMixin, Replaceable):
-    columns: Optional[List[NamedTested]]
+    columns: Optional[List[NamedTested]] = field(default_factory=list)
 
     def __post_init__(self):
         if self.columns is None:
@@ -69,7 +69,7 @@ class NodeDescription(NamedTested):
 
 
 @dataclass
-class UnparsedNodeUpdate(NodeDescription, ColumnDescription):
+class UnparsedNodeUpdate(ColumnDescription, NodeDescription):
     def __post_init__(self):
         NodeDescription.__post_init__(self)
         ColumnDescription.__post_init__(self)
@@ -123,7 +123,7 @@ class Quoting(JsonSchemaMixin, Mergeable):
 
 
 @dataclass
-class UnparsedSourceTableDefinition(NodeDescription, ColumnDescription):
+class UnparsedSourceTableDefinition(ColumnDescription, NodeDescription):
     loaded_at_field: Optional[str] = None
     identifier: Optional[str] = None
     quoting: Quoting = field(default_factory=Quoting)
